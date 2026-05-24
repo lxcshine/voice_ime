@@ -8,6 +8,7 @@ class LLMCorrector:
     def __init__(self):
         self.client = None
         self.model = None
+        self.context_manager = None
         self.short_prompt = (
             "You are a voice recognition correction assistant. "
             "Remove filler words (um, ah, uh, like), fix typos, add proper punctuation. "
@@ -42,11 +43,26 @@ class LLMCorrector:
         except Exception as e:
             logger.error(f"Failed to initialize LLM: {e}")
 
+    def set_context_manager(self, ctx_mgr):
+        self.context_manager = ctx_mgr
+
     def correct(self, text: str) -> str:
         if not self.client or len(text) < 4:
             return text
 
-        prompt = self.long_prompt if len(text) > 50 else self.short_prompt
+        user_content = text
+        system_prompt = self.long_prompt if len(text) > 50 else self.short_prompt
+
+        if self.context_manager and not self.context_manager.is_empty():
+            ctx_msg = self.context_manager.build_correction_prompt(text)
+            if ctx_msg:
+                user_content = ctx_msg
+                system_prompt = (
+                    "You are a professional speech-to-text editor with context awareness. "
+                    "Use the conversation context to resolve homophones and ambiguities. "
+                    "Remove filler words, fix punctuation. Output ONLY the corrected text."
+                )
+
         max_tokens = 512 if len(text) > 50 else 256
 
         try:
@@ -54,8 +70,8 @@ class LLMCorrector:
             resp = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": prompt},
-                    {"role": "user", "content": text}
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content}
                 ],
                 temperature=0.1,
                 max_tokens=max_tokens
