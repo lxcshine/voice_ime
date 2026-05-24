@@ -104,6 +104,13 @@ class VisualizationWindow(QMainWindow):
         else:
             self.streaming_text.update_partial(text)
 
+    def append_incremental_text(self, new_chars: str):
+        self.streaming_text.append_incremental(new_chars)
+
+    def show_command(self, description: str):
+        self.streaming_text.text_label.setText(f"[CMD] {description}")
+        self.streaming_text.text_label.setStyleSheet("color: #00ccff; font-size: 13px; padding: 5px;")
+
     def set_vad_status(self, status: str, color: QColor):
         self.vad_status.set_status(status, color)
 
