@@ -5,7 +5,7 @@
 
 ## 项目简介
 
-VoiceIME Pro 是一款基于环境噪声自适应 VAD（Voice Activity Detection）的智能语音输入法。项目采用 Silero VAD + FunASR Paraformer 双模型架构，结合实时噪声估计与动态阈值调整，实现高精度的语音活动检测与流式语音识别。支持实时字幕输出、音频特征可视化、LLM 文本纠错等高级功能，适用于各种噪声环境下的语音输入场景。
+VoiceIME是一款基于环境噪声自适应 VAD（Voice Activity Detection）的智能语音输入法。项目采用 Silero VAD + FunASR Paraformer 双模型架构，结合实时噪声估计与动态阈值调整，实现高精度的语音活动检测与流式语音识别。支持实时字幕输出、音频特征可视化、LLM 文本纠错等高级功能，适用于各种噪声环境下的语音输入场景。
 
 ---
 
@@ -63,11 +63,11 @@ voice-ime/
 │   │   └── continuous_YYYYMMDD.txt  # 连续模式识别记录
 │   └── statistics.json          # 统计数据持久化
 │
-└── test_*.py                    # 测试诊断脚本
-    ├── test_mic.py              # 麦克风诊断
-    ├── test_vad.py              # VAD功能测试
-    ├── test_audio_stream.py     # 音频流测试
-    └── check_deps.py            # 依赖检查
+
+test_mic.py              # 麦克风诊断
+test_vad.py              # VAD功能测试
+test_audio_stream.py     # 音频流测试
+check_deps.py            # 依赖检查
 ```
 
 ---
@@ -115,10 +115,10 @@ EXIT_KEY=f12
 # VAD配置
 VAD_THRESHOLD=0.5
 
-# LLM配置（可选，用于文本纠错）
-LLM_API_KEY=your-api-key-here
-LLM_BASE_URL=https://api.openai.com/v1
-LLM_MODEL=gpt-3.5-turbo
+# LLM配置（用于文本纠错）
+GEMINI_API_KEY=your-api-key-here
+GEMINI_BASE_URL=https://api.openai.com/v1
+GEMINI_MODEL=your-llm-model
 LLM_ENABLED=true
 
 # 功能开关
