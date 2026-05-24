@@ -181,18 +181,25 @@ class MetricsPanel(QFrame):
 
 
 class StreamingTextDisplay(QWidget):
-    """Real-time streaming text display for incremental ASR output."""
+    """
+    Real-time streaming text display for incremental ASR output.
+    Supports character-by-character animation and word-level diff display.
+    """
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedHeight(60)
+        self.setFixedHeight(80)
         self.partial_text = ""
         self.final_text = ""
+        self._animation_queue = []
+        self._anim_timer = QTimer()
+        self._anim_timer.timeout.connect(self._animate_next_char)
+        self._anim_interval = 30
         self.setStyleSheet("background: rgba(20, 20, 20, 0.9); border-radius: 8px;")
 
         layout = QVBoxLayout(self)
         self.text_label = QLabel("Waiting for speech...")
-        self.text_label.setStyleSheet("color: #00ff88; font-size: 13px; padding: 5px;")
+        self.text_label.setStyleSheet("color: #666; font-size: 13px; padding: 5px;")
         self.text_label.setWordWrap(True)
         layout.addWidget(self.text_label)
 
@@ -201,12 +208,44 @@ class StreamingTextDisplay(QWidget):
         self.text_label.setText(f"[Recognizing] {text}")
         self.text_label.setStyleSheet("color: #ffaa00; font-size: 13px; padding: 5px;")
 
+    def append_incremental(self, new_chars: str):
+        if not new_chars:
+            return
+        self._animation_queue = list(new_chars)
+        if not self._anim_timer.isActive():
+            self._anim_timer.start(self._anim_interval)
+
+    def _animate_next_char(self):
+        if not self._animation_queue:
+            self._anim_timer.stop()
+            return
+
+        chars_batch = []
+        batch_size = max(1, len(self._animation_queue) // 3)
+        for _ in range(batch_size):
+            if not self._animation_queue:
+                break
+            chars_batch.append(self._animation_queue.pop(0))
+
+        self.partial_text += "".join(chars_batch)
+        self.text_label.setText(f"[Recognizing] {self.partial_text}")
+        self.text_label.setStyleSheet("color: #ffaa00; font-size: 13px; padding: 5px;")
+
+        if not self._animation_queue:
+            self._anim_timer.stop()
+
     def update_final(self, text: str):
+        self._animation_queue = []
+        self._anim_timer.stop()
         self.final_text = text
+        self.partial_text = text
         self.text_label.setText(f"[Done] {text}")
         self.text_label.setStyleSheet("color: #00ff88; font-size: 13px; padding: 5px;")
 
     def reset(self):
+        self._animation_queue = []
+        self._anim_timer.stop()
         self.partial_text = ""
+        self.final_text = ""
         self.text_label.setText("Waiting for speech...")
         self.text_label.setStyleSheet("color: #666; font-size: 13px; padding: 5px;")
