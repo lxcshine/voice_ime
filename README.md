@@ -136,7 +136,8 @@ python main.py
 ```
 
 首次运行时，FunASR 模型会自动下载（约 1-2GB），请耐心等待。
-需在.env文件中的GEMINI_API_KEY选项添加你自己的api key，如有需要，联系本作者：liaoxcool@163.com
+
+注意，需在.env文件中的GEMINI_API_KEY选项添加你自己的api key，如有需要，联系本作者：liaoxcool@163.com
 
 ---
 
