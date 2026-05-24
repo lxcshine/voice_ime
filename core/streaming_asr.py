@@ -10,6 +10,7 @@ class StreamingASREngine:
     """
     Streaming ASR with incremental recognition for real-time subtitle output.
     Uses chunked audio processing with overlapping windows for continuous recognition.
+    Supports word-by-word diff tracking for character-level UI animation.
     """
 
     def __init__(self):
@@ -17,8 +18,8 @@ class StreamingASREngine:
         self._model_lock = threading.Lock()
         self._is_loading = False
 
-        self.chunk_duration = 2.0  # seconds per chunk for streaming
-        self.overlap_duration = 0.5  # overlap between chunks
+        self.chunk_duration = 2.0
+        self.overlap_duration = 0.5
         self.sr = Config.SAMPLE_RATE
         self.chunk_size = int(self.chunk_duration * self.sr)
         self.overlap_size = int(self.overlap_duration * self.sr)
@@ -30,11 +31,17 @@ class StreamingASREngine:
         self._stream_thread = None
         self._stop_event = threading.Event()
 
+        self._last_displayed = ""
+        self._consolidated_text = ""
+
         self.callbacks = {
             "on_partial": None,
+            "on_incremental": None,
             "on_final": None,
             "on_error": None
         }
+
+        self._lock_buffer = threading.Lock()
 
     def load_model(self):
         if self.model is not None:
@@ -73,6 +80,8 @@ class StreamingASREngine:
     def start_streaming(self):
         self.audio_buffer = np.array([], dtype=np.float32)
         self.last_processed_idx = 0
+        self._last_displayed = ""
+        self._consolidated_text = ""
         self.is_streaming = True
         self._stop_event.clear()
         self._stream_thread = threading.Thread(target=self._stream_loop, daemon=True)
@@ -89,20 +98,27 @@ class StreamingASREngine:
     def feed_audio(self, chunk: np.ndarray):
         if not self.is_streaming:
             return
-        self.audio_buffer = np.concatenate([self.audio_buffer, chunk])
+        with self._lock_buffer:
+            self.audio_buffer = np.concatenate([self.audio_buffer, chunk])
 
     def _stream_loop(self):
         while self.is_streaming and not self._stop_event.is_set():
-            if len(self.audio_buffer) - self.last_processed_idx < self.chunk_size:
+            with self._lock_buffer:
+                available = len(self.audio_buffer) - self.last_processed_idx
+            if available < self.chunk_size:
                 time.sleep(0.1)
                 continue
 
-            end_idx = self.last_processed_idx + self.chunk_size
-            chunk = self.audio_buffer[self.last_processed_idx:end_idx]
+            with self._lock_buffer:
+                end_idx = self.last_processed_idx + self.chunk_size
+                chunk = self.audio_buffer[self.last_processed_idx:end_idx].copy()
 
             self._process_chunk(chunk, is_final=False)
 
-            self.last_processed_idx = end_idx - self.overlap_size
+            with self._lock_buffer:
+                self.last_processed_idx = end_idx - self.overlap_size
+                if self.last_processed_idx < 0:
+                    self.last_processed_idx = 0
 
     def _process_chunk(self, audio: np.ndarray, is_final=False):
         if self.model is None:
@@ -124,17 +140,48 @@ class StreamingASREngine:
             if res and len(res) > 0 and "text" in res[0]:
                 text = res[0]["text"].strip()
                 if text:
-                    if is_final:
-                        if self.callbacks["on_final"]:
-                            self.callbacks["on_final"](text)
-                    else:
-                        if self.callbacks["on_partial"]:
-                            self.callbacks["on_partial"](text)
+                    self._emit_with_diff(text, is_final)
 
         except Exception as e:
             logger.error(f"Streaming ASR error: {e}")
             if self.callbacks["on_error"]:
                 self.callbacks["on_error"](str(e))
+
+    def _emit_with_diff(self, text: str, is_final: bool):
+        if text == self._last_displayed:
+            return
+
+        incremental_chars = ""
+        min_len = min(len(self._last_displayed), len(text))
+        common_prefix_len = 0
+
+        for i in range(min_len):
+            if text[i] == self._last_displayed[i]:
+                common_prefix_len = i + 1
+            else:
+                break
+
+        if is_final:
+            incremental_chars = text[common_prefix_len:]
+        else:
+            if len(text) > len(self._last_displayed):
+                incremental_chars = text[len(self._last_displayed):]
+            else:
+                incremental_chars = text[common_prefix_len:]
+
+        self._last_displayed = text
+
+        if incremental_chars:
+            if self.callbacks["on_incremental"]:
+                self.callbacks["on_incremental"](incremental_chars)
+
+        if is_final:
+            self._consolidated_text = text
+            if self.callbacks["on_final"]:
+                self.callbacks["on_final"](text)
+        else:
+            if self.callbacks["on_partial"]:
+                self.callbacks["on_partial"](text)
 
     def process_final(self, audio: np.ndarray) -> str:
         if self.model is None:
@@ -159,3 +206,6 @@ class StreamingASREngine:
         except Exception as e:
             logger.error(f"Final ASR error: {e}")
             return ""
+
+    def get_consolidated_text(self) -> str:
+        return self._consolidated_text
