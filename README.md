@@ -183,7 +183,12 @@ python main.py
 ---
 
 ## 项目部分截图
+
+
+### Audio Analysis
 ![Audio Analysis](https://github.com/lxcshine/voice_ime/raw/master/images/audio%20analysis.png)
+
+### System Settings
 
 
 ---
