@@ -257,7 +257,7 @@ A: 首次运行需下载模型文件。如有 NVIDIA GPU，确保安装了 CUDA 
 A: 确保程序以管理员权限运行，某些应用可能会拦截全局热键。
 
 ### Q: 如何启用 LLM 纠错？
-A: 在 `.env` 中配置 `LLM_API_KEY` 和 `LLM_BASE_URL`，设置 `LLM_ENABLED=true`。
+A: 在 `.env` 中配置 `GEMINI_API_KEY` 和 `GEMINI_BASE_URL`，设置 `LLM_ENABLED=true`。
 
 ---
 
