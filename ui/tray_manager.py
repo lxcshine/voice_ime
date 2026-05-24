@@ -13,6 +13,8 @@ class TrayManager(QObject):
     sig_show_analysis = pyqtSignal()
     sig_exit = pyqtSignal()
     sig_toggle_continuous = pyqtSignal()
+    sig_clear_context = pyqtSignal()
+    sig_toggle_commands = pyqtSignal()
 
     def __init__(self, scheduler, analysis_window=None):
         super().__init__()
@@ -25,6 +27,7 @@ class TrayManager(QObject):
         self.continuous_action = None
         self.enabled_action = None
         self.stats_action = None
+        self.commands_action = None
 
         self._build_menu()
         self.tray.show()
@@ -37,6 +40,8 @@ class TrayManager(QObject):
         self.sig_show_analysis.connect(self._show_analysis)
         self.sig_exit.connect(QApplication.quit)
         self.sig_toggle_continuous.connect(self._do_toggle_continuous)
+        self.sig_clear_context.connect(self._do_clear_context)
+        self.sig_toggle_commands.connect(self._do_toggle_commands)
 
     def _build_menu(self):
         menu = QMenu()
@@ -51,6 +56,9 @@ class TrayManager(QObject):
         self.enabled_action = QAction("Enable Voice Recognition", triggered=self._toggle_enabled)
         menu.addAction(self.enabled_action)
 
+        self.commands_action = QAction("Voice Commands: ON", triggered=self._toggle_commands)
+        menu.addAction(self.commands_action)
+
         menu.addSeparator()
 
         self.stats_action = QAction("Show Statistics", triggered=self._show_stats)
@@ -61,6 +69,9 @@ class TrayManager(QObject):
 
         analysis_action = QAction("Audio Analysis (F11)", triggered=self._show_analysis)
         menu.addAction(analysis_action)
+
+        context_action = QAction("Clear Context (F6)", triggered=self._clear_context)
+        menu.addAction(context_action)
 
         menu.addSeparator()
         menu.addAction(QAction("Exit (F12)", triggered=QApplication.quit))
@@ -73,6 +84,19 @@ class TrayManager(QObject):
     def _do_toggle_continuous(self):
         is_on = self.scheduler.toggle_continuous()
         self.continuous_action.setText(f"Continuous Mode: {'ON' if is_on else 'OFF'}")
+
+    def _toggle_commands(self):
+        self.sig_toggle_commands.emit()
+
+    def _do_toggle_commands(self):
+        is_on = self.scheduler.toggle_voice_commands()
+        self.commands_action.setText(f"Voice Commands: {'ON' if is_on else 'OFF'}")
+
+    def _clear_context(self):
+        self.sig_clear_context.emit()
+
+    def _do_clear_context(self):
+        self.scheduler.clear_context()
 
     def _toggle_enabled(self):
         is_on = self.scheduler.toggle_enabled()
@@ -109,8 +133,13 @@ class TrayManager(QObject):
     def _show_settings_dialog(self):
         msg = (
             f"Current Settings:\n\n"
-            f"Hotkey: {settings.get('hotkey', 'f8').upper()}\n"
-            f"Exit key: {settings.get('exit_key', 'f12').upper()}\n"
+            f"Hotkey (record): {settings.get('hotkey', 'f8').upper()}\n"
+            f"Continuous mode: F10\n"
+            f"Clear context: F6\n"
+            f"Voice commands toggle: F7\n"
+            f"Audio analysis: F11\n"
+            f"Settings: F9\n"
+            f"Exit: {settings.get('exit_key', 'f12').upper()}\n\n"
             f"VAD threshold: {settings.get('vad_threshold', 0.5)}\n"
             f"LLM correction: {'ON' if settings.get('llm_enabled', True) else 'OFF'}\n"
             f"Continuous mode: {'ON' if settings.get('continuous_mode', False) else 'OFF'}\n"
@@ -144,6 +173,8 @@ class TrayManager(QObject):
         settings_key = "f9"
         continuous_key = "f10"
         analysis_key = "f11"
+        context_clear_key = "f6"
+        commands_toggle_key = "f7"
 
         self.pressed_keys = set()
 
@@ -168,6 +199,14 @@ class TrayManager(QObject):
 
             if base_key == analysis_key:
                 self.sig_show_analysis.emit()
+                return
+
+            if base_key == context_clear_key:
+                self.sig_clear_context.emit()
+                return
+
+            if base_key == commands_toggle_key:
+                self.sig_toggle_commands.emit()
                 return
 
             if target_keys.issubset(self.pressed_keys):
