@@ -11,6 +11,8 @@ from core.llm_corrector import LLMCorrector
 from core.text_injector import TextInjector
 from core.history_logger import HistoryLogger
 from core.audio_features import AudioFeatureExtractor, SpeechQualityAssessor
+from core.context_manager import ContextManager
+from core.voice_command import VoiceCommandParser
 from core.statistics import stats
 from utils.logger import logger
 from utils.config import Config
@@ -28,6 +30,8 @@ class Scheduler(QObject):
     sig_noise_info = pyqtSignal(object)
     sig_vad_info = pyqtSignal(object)
     sig_streaming_text = pyqtSignal(str, bool)
+    sig_incremental_text = pyqtSignal(str)
+    sig_command_executed = pyqtSignal(str)
 
     def __init__(self, use_adaptive_vad=True):
         super().__init__()
@@ -41,6 +45,10 @@ class Scheduler(QObject):
         self.history_continuous = HistoryLogger(mode="continuous")
         self.feature_extractor = AudioFeatureExtractor()
         self.quality_assessor = SpeechQualityAssessor()
+        self.context_manager = ContextManager(max_context=5)
+        self.command_parser = VoiceCommandParser()
+
+        self.llm.set_context_manager(self.context_manager)
 
         self.is_running = False
         self.is_enabled = True
@@ -53,6 +61,7 @@ class Scheduler(QObject):
         self._use_adaptive_vad = use_adaptive_vad
 
         self.streaming_asr.set_callback("on_partial", self._on_streaming_partial)
+        self.streaming_asr.set_callback("on_incremental", self._on_streaming_incremental)
         self.streaming_asr.set_callback("on_final", self._on_streaming_final)
 
     def start(self):
@@ -85,7 +94,6 @@ class Scheduler(QObject):
                 self._continuous_audio_buffer = []
                 threading.Thread(target=self._process_continuous_audio, args=(audio_data,), daemon=True).start()
             else:
-                logger.warning(f"NOT processing: was_continuous={was_continuous}, buffer_size={buffer_size}")
                 self._continuous_audio_buffer = []
 
             if was_continuous:
@@ -111,6 +119,17 @@ class Scheduler(QObject):
         if not self.is_enabled:
             self.stop()
         return self.is_enabled
+
+    def clear_context(self):
+        self.context_manager.clear()
+        logger.info("Context cleared")
+
+    def toggle_voice_commands(self, enabled=None):
+        if enabled is None:
+            enabled = not self.command_parser.is_enabled()
+        self.command_parser.set_enabled(enabled)
+        logger.info(f"Voice commands: {'ON' if enabled else 'OFF'}")
+        return enabled
 
     def _loop(self):
         consecutive_errors = 0
@@ -171,6 +190,39 @@ class Scheduler(QObject):
                     self._recover()
                     consecutive_errors = 0
 
+    def _process_text_with_commands(self, text: str, history_logger, is_continuous=False):
+        if not text:
+            return text
+
+        cmd_result = self.command_parser.parse(text)
+
+        if cmd_result["is_command"]:
+            self.injector.inject_command(cmd_result["action"])
+            self.sig_command_executed.emit(cmd_result["description"])
+            logger.info(f"Voice command executed: {cmd_result['description']}")
+
+            if cmd_result["remaining_text"]:
+                corrected = self.llm.correct(cmd_result["remaining_text"])
+                if corrected and corrected.strip():
+                    self.injector.inject(corrected)
+                    history_logger.log(corrected)
+                    stats.record_session(corrected)
+                    self.context_manager.add_utterance(corrected)
+                    return corrected
+
+            history_logger.log(f"[CMD] {cmd_result['keyword']} -> {cmd_result['action']}")
+            return f"[CMD] {cmd_result['description']}"
+
+        corrected = self.llm.correct(text)
+        if corrected and corrected.strip():
+            self.injector.inject(corrected)
+            history_logger.log(corrected)
+            stats.record_session(corrected)
+            self.context_manager.add_utterance(corrected)
+            return corrected
+
+        return text
+
     def _process(self, audio: np.ndarray):
         try:
             raw_text = self.asr.transcribe(audio)
@@ -179,10 +231,7 @@ class Scheduler(QObject):
                 self.sig_hide.emit(2.0)
                 return
 
-            final_text = self.llm.correct(raw_text)
-            self.injector.inject(final_text)
-            self.history.log(final_text)
-            stats.record_session(final_text)
+            final_text = self._process_text_with_commands(raw_text, self.history)
             self.sig_result.emit(final_text)
             self.sig_hide.emit(3.0)
 
@@ -202,10 +251,7 @@ class Scheduler(QObject):
                 self.sig_hide.emit(2.0)
                 return
 
-            final_text = self.llm.correct(raw_text)
-            self.injector.inject(final_text)
-            self.history_continuous.log(final_text)
-            stats.record_session(final_text)
+            final_text = self._process_text_with_commands(raw_text, self.history_continuous, is_continuous=True)
             self.sig_result.emit(final_text)
             self.sig_hide.emit(3.0)
             logger.info(f"Continuous mode result: {final_text}")
@@ -219,12 +265,14 @@ class Scheduler(QObject):
     def _on_streaming_partial(self, text: str):
         self.sig_streaming_text.emit(text, False)
 
+    def _on_streaming_incremental(self, new_chars: str):
+        self.sig_incremental_text.emit(new_chars)
+
     def _on_streaming_final(self, text: str):
         self.sig_streaming_text.emit(text, True)
 
     def _recover(self):
         logger.info("Attempting audio recovery...")
-        was_continuous = self.continuous_mode
         self.audio.stop()
         time.sleep(0.5)
         if self.audio.recover():
