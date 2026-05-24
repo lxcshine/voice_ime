@@ -189,7 +189,7 @@ python main.py
 ![Audio Analysis](https://github.com/lxcshine/voice_ime/raw/master/images/audio%20analysis.png)
 
 ### System Settings
-
+![Audio Analysis](https://github.com/lxcshine/voice_ime/blob/master/images/settings.png)
 
 ---
 
