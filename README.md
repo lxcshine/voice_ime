@@ -183,7 +183,7 @@ python main.py
 ---
 
 ## 项目部分截图
-https://github.com/lxcshine/voice_ime/blob/master/images/audio%20analysis.png
+![Audio Analysis](https://github.com/lxcshine/voice_ime/raw/master/images/audio%20analysis.png)
 
 
 ---
