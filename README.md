@@ -269,5 +269,5 @@ MIT License
 
 ## 作者
 
-VoiceIME Pro - 基于环境噪声自适应 VAD 的智能语音输入法
+liaoxcool@163.com
 
