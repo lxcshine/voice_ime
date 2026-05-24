@@ -28,6 +28,8 @@ def main():
     scheduler.sig_noise_info.connect(analysis_window.update_noise_info)
     scheduler.sig_vad_info.connect(analysis_window.update_vad_info)
     scheduler.sig_streaming_text.connect(analysis_window.update_streaming_text)
+    scheduler.sig_incremental_text.connect(analysis_window.append_incremental_text)
+    scheduler.sig_command_executed.connect(analysis_window.show_command)
 
     tray = TrayManager(scheduler, analysis_window)
 
