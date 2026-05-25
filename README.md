@@ -13,6 +13,8 @@ VoiceIME是一款基于环境噪声自适应 VAD（Voice Activity Detection）�
 
 https://www.bilibili.com/video/BV1NbG46HECH/?vd_source=5f14e6d38ffc56e4eedd055ab99b775e
 
+---
+
 ## 核心特性
 
 - **自适应 VAD 检测**：基于最小统计量和指数移动平均的噪声估计，根据信噪比动态调整检测阈值
