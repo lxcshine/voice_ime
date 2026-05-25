@@ -101,7 +101,7 @@ VoiceIME 的设计哲学就是：**能不用眼睛看的，就不用。**
 
 ## 输入法功能效果演示
 
-https://www.bilibili.com/video/BV1NbG46HECH/?vd_source=5f14e6d38ffc56e4eedd055ab99b775e
+https://www.bilibili.com/video/BV1sPGd6wEES/?vd_source=5f14e6d38ffc56e4eedd055ab99b775e
 
 ---
 
