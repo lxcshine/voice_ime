@@ -5,7 +5,7 @@
 
 ## 项目简介
 
-VoiceIME是一款基于环境噪声自适应 VAD（Voice Activity Detection）的智能语音输入法。项目采用 Silero VAD + FunASR Paraformer 双模型架构，结合实时噪声估计与动态阈值调整，实现高精度的语音活动检测与流式语音识别。支持实时字幕输出、多轮上下文理解、语音指令、音频特征可视化、LLM 文本纠错等高级功能，适用于各种噪声环境下的语音输入场景。
+VoiceIME是一款基于环境噪声自适应 VAD（Voice Activity Detection）的智能语音输入法。项目采用 Silero VAD + FunASR Paraformer 双模型架构，结合实时噪声估计与动态阈值调整，实现高精度的语音活动检测与流式语音识别。多轮上下文理解、语音指令、音频特征可视化、LLM 文本纠错等高级功能，适用于各种噪声环境下的语音输入场景。
 
 ---
 
