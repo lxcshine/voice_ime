@@ -1,6 +1,10 @@
 # voice_ime
 自适应VAD语音输入法
 
+将光标放在任何想输入的地方，使用该产品即可实现语音输入，无需键盘！
+
+支持在微信、QQ、浏览器、记事本等进行语音输入。
+
 ---
 
 ## 项目简介
@@ -324,7 +328,7 @@ VoiceIME 会自动维护对话历史记录（最近5轮），在 LLM 纠错时�
 
 
 ### Audio Analysis
-![Audio Analysis](https://github.com/lxcshine/voice_ime/raw/master/images/audio%20analysis.png)
+![Audio Analysis](https://github.com/lxcshine/voice_ime/blob/master/images/analysis.png)
 
 ### System Settings
 ![Audio Analysis](https://github.com/lxcshine/voice_ime/blob/master/images/settings.png)
