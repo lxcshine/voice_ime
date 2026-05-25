@@ -64,7 +64,6 @@ VoiceIME是一款基于环境噪声自适应 VAD（Voice Activity Detection）�
 
 VoiceIME 的设计哲学就是：**能不用眼睛看的，就不用。**
 
----
 
 ## 三、为什么用热键而不是按钮？
 
